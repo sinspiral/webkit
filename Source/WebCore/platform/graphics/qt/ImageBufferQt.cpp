@@ -83,10 +83,10 @@ ImageBuffer::~ImageBuffer()
 PassOwnPtr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
 {
     bool success = false;
-    OwnPtr<ImageBuffer> buf = adoptPtr(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
+    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
     if (!success)
         return nullptr;
-    return buf.release();
+    return buf;
 }
 #endif
 

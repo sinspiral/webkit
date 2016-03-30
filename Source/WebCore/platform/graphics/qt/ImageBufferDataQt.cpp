@@ -129,29 +129,29 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
     ImageBufferDataPrivateAccelerated(const IntSize& size, QOpenGLContext* sharedContext);
     virtual ~ImageBufferDataPrivateAccelerated();
 
-    virtual QPaintDevice* paintDevice() OVERRIDE { return m_paintDevice; }
-    virtual QImage toQImage() const OVERRIDE;
-    virtual PassRefPtr<Image> image() const OVERRIDE;
-    virtual PassRefPtr<Image> copyImage() const OVERRIDE;
-    virtual bool isAccelerated() const OVERRIDE { return true; }
-    virtual PlatformLayer* platformLayer() OVERRIDE { return this; }
+    QPaintDevice* paintDevice() override { return m_paintDevice; }
+    QImage toQImage() const override;
+    PassRefPtr<Image> image() const override;
+    PassRefPtr<Image> copyImage() const override;
+    bool isAccelerated() const override { return true; }
+    PlatformLayer* platformLayer() override { return this; }
 
     void invalidateState() const;
-    virtual void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
+    void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
                       const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
-                      bool ownContext) OVERRIDE;
-    virtual void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                      bool ownContext) override;
+    void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
-                             const FloatRect& destRect, bool ownContext) OVERRIDE;
-    virtual void clip(GraphicsContext* context, const FloatRect& floatRect) const OVERRIDE;
-    virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) OVERRIDE;
+                             const FloatRect& destRect, bool ownContext) override;
+    void clip(GraphicsContext* context, const FloatRect& floatRect) const override;
+    void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
 
     // TextureMapperPlatformLayer:
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0) OVERRIDE;
+    void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0) override;
 #if USE(GRAPHICS_SURFACE)
-    virtual IntSize platformLayerSize() const OVERRIDE;
-    virtual uint32_t copyToGraphicsSurface() OVERRIDE;
-    virtual GraphicsSurfaceToken graphicsSurfaceToken() const OVERRIDE;
+    IntSize platformLayerSize() const override;
+    uint32_t copyToGraphicsSurface() override;
+    GraphicsSurfaceToken graphicsSurfaceToken() const override;
     RefPtr<GraphicsSurface> m_graphicsSurface;
 #endif
 private:
@@ -348,20 +348,20 @@ GraphicsSurfaceToken ImageBufferDataPrivateAccelerated::graphicsSurfaceToken() c
 
 struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
     ImageBufferDataPrivateUnaccelerated(const IntSize& size);
-    virtual QPaintDevice* paintDevice() OVERRIDE { return m_pixmap.isNull() ? 0 : &m_pixmap; }
-    virtual QImage toQImage() const OVERRIDE;
-    virtual PassRefPtr<Image> image() const OVERRIDE;
-    virtual PassRefPtr<Image> copyImage() const OVERRIDE;
-    virtual bool isAccelerated() const OVERRIDE { return false; }
-    virtual PlatformLayer* platformLayer() OVERRIDE { return 0; }
-    virtual void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
-              bool ownContext) OVERRIDE;
-    virtual void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                     const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
-                     const FloatRect& destRect, bool ownContext) OVERRIDE;
-    virtual void clip(GraphicsContext* context, const FloatRect& floatRect) const OVERRIDE;
-    virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) OVERRIDE;
+    QPaintDevice* paintDevice() override { return m_pixmap.isNull() ? 0 : &m_pixmap; }
+    QImage toQImage() const override;
+    PassRefPtr<Image> image() const override;
+    PassRefPtr<Image> copyImage() const override;
+    bool isAccelerated() const override { return false; }
+    PlatformLayer* platformLayer() override { return 0; }
+    void draw(GraphicsContext& destContext, const FloatRect& destRect,
+              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
+              bool ownContext) override;
+    void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                     const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
+                     const FloatRect& destRect, bool ownContext) override;
+    void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
+    void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
 
     QPixmap m_pixmap;
     RefPtr<Image> m_image;
@@ -399,31 +399,30 @@ PassRefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
     return StillImage::create(m_pixmap);
 }
 
-void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-                                               const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
-                                               bool useLowQualityScale, bool ownContext)
+void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, const FloatRect& destRect,
+                                               const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool ownContext)
 {
     if (ownContext) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage();
-        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation, useLowQualityScale);
+        destContext.drawImage(*copy, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
     } else
-        destContext->drawImage(m_image.get(), styleColorSpace, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation, useLowQualityScale);
+        destContext.drawImage(*m_data.m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
 }
 
-void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                                                      const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
+void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                                                      const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                                                       const FloatRect& destRect, bool ownContext)
 {
     if (ownContext) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage();
-        copy->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+        copy->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
     } else
-        m_image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
 }
 
-void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext* context, const FloatRect& floatRect) const
+void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
 {
     QPixmap* nativeImage = m_image->nativeImageForCurrentFrame();
 
@@ -433,7 +432,7 @@ void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext* context, const F
     IntRect rect = enclosingIntRect(floatRect);
     QPixmap alphaMask = *nativeImage;
 
-    context->pushTransparencyLayerInternal(rect, 1.0, alphaMask);
+    context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
 void ImageBufferDataPrivateUnaccelerated::platformTransformColorSpace(const Vector<int>& lookUpTable)
