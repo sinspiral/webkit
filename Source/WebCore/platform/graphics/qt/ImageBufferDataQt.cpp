@@ -138,7 +138,7 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
 
     void invalidateState() const;
     void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
+                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) override;
     void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
@@ -200,7 +200,7 @@ void ImageBufferDataPrivateAccelerated::invalidateState() const
 
 void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
                                              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
-                                             bool useLowQualityScale, bool /*ownContext*/)
+                                             bool /*ownContext*/)
 {
     if (destContext->isAcceleratedContext()) {
         invalidateState();
@@ -242,7 +242,7 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, Color
     }
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
     destContext->drawImage(image.get(), styleColorSpace, destRect, srcRect, op, blendMode,
-                           DoNotRespectImageOrientation, useLowQualityScale);
+                           DoNotRespectImageOrientation);
 }
 
 
