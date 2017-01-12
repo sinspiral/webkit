@@ -116,6 +116,12 @@ ALWAYS_INLINE static void doNothing() {}
 #define glDeleteShader(...)                    LOOKUP_GL_FUNCTION(glDeleteShader, __VA_ARGS__)
 #define glDetachShader(...)                    LOOKUP_GL_FUNCTION(glDetachShader, __VA_ARGS__)
 #define glDisableVertexAttribArray(...)        LOOKUP_GL_FUNCTION(glDisableVertexAttribArray, __VA_ARGS__)
+#define glDrawArraysInstancedEXT               glDrawArraysInstanced
+#define glDrawArraysInstanced                  LOOKUP_GL_FUNCTION(glDrawArraysInstanced)
+#define glDrawBuffersEXT                       glDrawBuffers
+#define glDrawBuffers                          LOOKUP_GL_FUNCTION(glDrawBuffers)
+#define glDrawElementsInstancedEXT             glDrawElementsInstanced
+#define glDrawElementsInstanced                LOOKUP_GL_FUNCTION(glDrawElementsInstanced)
 #define glEnableVertexAttribArray(...)         LOOKUP_GL_FUNCTION(glEnableVertexAttribArray, __VA_ARGS__)
 #define glFramebufferRenderbufferEXT           glFramebufferRenderbuffer
 #define glFramebufferRenderbuffer(...)         LOOKUP_GL_FUNCTION(glFramebufferRenderbuffer, __VA_ARGS__)
@@ -195,4 +201,6 @@ ALWAYS_INLINE static void doNothing() {}
 #define glVertexAttrib3fv(...)                 LOOKUP_GL_FUNCTION(glVertexAttrib3fv, __VA_ARGS__)
 #define glVertexAttrib4f(...)                  LOOKUP_GL_FUNCTION(glVertexAttrib4f, __VA_ARGS__)
 #define glVertexAttrib4fv(...)                 LOOKUP_GL_FUNCTION(glVertexAttrib4fv, __VA_ARGS__)
+#define glVertexAttribDivisorEXT               glVertexAttribDivisor
+#define glVertexAttribDivisor                  LOOKUP_GL_FUNCTION(glVertexAttribDivisor
 #define glVertexAttribPointer(...)             LOOKUP_GL_FUNCTION(glVertexAttribPointer, __VA_ARGS__)
