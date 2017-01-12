@@ -137,11 +137,11 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
     PlatformLayer* platformLayer() override { return this; }
 
     void invalidateState() const;
-    void draw(GraphicsContext& destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
+    void draw(GraphicsContext& destContext, const FloatRect& destRect,
                       const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) override;
     void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                             const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
+                             const FloatPoint& phase, CompositeOperator op,
                              const FloatRect& destRect, bool ownContext) override;
     void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
     void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
@@ -198,7 +198,7 @@ void ImageBufferDataPrivateAccelerated::invalidateState() const
     acceleratedPaintEngine->invalidateState();
 }
 
-void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
+void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, const FloatRect& destRect,
                                              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                                              bool /*ownContext*/)
 {
@@ -241,17 +241,17 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, Color
         }
     }
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    destContext.drawImage(image.get(), styleColorSpace, destRect, srcRect, op, blendMode,
+    destContext.drawImage(image.get(), destRect, srcRect, op, blendMode,
                            DoNotRespectImageOrientation);
 }
 
 
 void ImageBufferDataPrivateAccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                                                    const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
+                                                    const FloatPoint& phase, CompositeOperator op,
                                                     const FloatRect& destRect, bool /*ownContext*/)
 {
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+    image->drawPattern(destContext, srcRect, patternTransform, phase, op, destRect);
 }
 
 void ImageBufferDataPrivateAccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
