@@ -242,8 +242,8 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, const
         }
     }
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    destContext.drawImage(image.get(), destRect, srcRect, op, blendMode,
-                           DoNotRespectImageOrientation);
+    destContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode,
+                           DoNotRespectImageOrientation));
 }
 
 
@@ -409,7 +409,7 @@ void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, con
         RefPtr<Image> copy = copyImage();
         destContext.drawImage(*copy, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
     } else
-        destContext.drawImage(*m_data.m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
+        destContext.drawImage(*m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
 }
 
 void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
@@ -421,7 +421,7 @@ void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destConte
         RefPtr<Image> copy = copyImage();
         copy->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
     } else
-        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
 }
 
 void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
