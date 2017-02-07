@@ -36,7 +36,7 @@
 #include <OpenGLES/ES2/gl.h>
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || (PLATFORM(WIN) && !PLATFORM(QT))
 #include "OpenGLShims.h"
 #elif PLATFORM(QT)
 #define FUNCTIONS m_functions
