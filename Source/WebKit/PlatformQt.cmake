@@ -470,7 +470,7 @@ else ()
     set(WebKit_LIBRARY_TYPE SHARED)
 endif ()
 
-if (APPLE)
+if (APPLE AND NOT QT_STATIC_BUILD)
     set(WebKit_OUTPUT_NAME QtWebKit)
 else ()
     set(WebKit_OUTPUT_NAME Qt5WebKit)
@@ -668,7 +668,7 @@ else ()
     set(WebKitWidgets_LIBRARY_TYPE SHARED)
 endif ()
 
-if (APPLE)
+if (APPLE AND NOT QT_STATIC_BUILD)
     set(WebKitWidgets_OUTPUT_NAME QtWebKitWidgets)
 else ()
     set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
@@ -680,7 +680,6 @@ add_dependencies(WebKitWidgets WebKit)
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
         DESTINATION "${LIB_INSTALL_DIR}"
-        INCLUDES DESTINATION "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
         RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
 )
 
