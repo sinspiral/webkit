@@ -197,7 +197,6 @@ void ProcessLauncher::launchProcess()
     } else
         webProcessOrSUIDHelper->start(commandLine);
 #else
-    qDebug() << "Start " << commandLine;
     webProcessOrSUIDHelper->start(commandLine);
 #endif
 
