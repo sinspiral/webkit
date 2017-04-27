@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2011 Zeno Albisser <zeno@webkit.org>
- * Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2011 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,41 +23,53 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef QtNetworkAccessManager_h
-#define QtNetworkAccessManager_h
+#include "config.h"
+#include "BinarySemaphore.h"
 
-#include <QMultiHash>
-#include <QNetworkAccessManager>
-#include <QNetworkProxy>
-#include <QString>
+namespace WTF {
 
-namespace WebKit {
+BinarySemaphore::BinarySemaphore()
+    : m_event(::CreateEventW(0, FALSE, FALSE, 0))
+{
+}
 
-class WebPage;
-class WebProcess;
+BinarySemaphore::~BinarySemaphore()
+{
+    ::CloseHandle(m_event);
+}
 
-class QtNetworkAccessManager : public QNetworkAccessManager {
-    Q_OBJECT
-public:
-    QtNetworkAccessManager(WebProcess*);
-    void registerApplicationScheme(const WebPage*, const QString& scheme);
+void BinarySemaphore::signal()
+{
+    ::SetEvent(m_event);
+}
 
-protected:
-    QNetworkReply* createRequest(Operation, const QNetworkRequest&, QIODevice* outgoingData = 0) override;
+bool BinarySemaphore::wait(double absoluteTime)
+{
+    DWORD interval = absoluteTimeToWaitTimeoutInterval(absoluteTime);
+    if (!interval) {
+        // Consider the wait to have timed out, even if the event has already been signaled, to
+        // match the WTF::ThreadCondition implementation.
+        return false;
+    }
 
-private Q_SLOTS:
-    void onAuthenticationRequired(QNetworkReply *, QAuthenticator *);
-    void onProxyAuthenticationRequired(const QNetworkProxy&, QAuthenticator *);
-    void onSslErrors(QNetworkReply*, const QList<QSslError>&);
+    DWORD result = ::WaitForSingleObject(m_event, interval);
+    switch (result) {
+    case WAIT_OBJECT_0:
+        // The event was signaled.
+        return true;
 
-private:
-    WebPage* obtainOriginatingWebPage(const QNetworkRequest&);
+    case WAIT_TIMEOUT:
+        // The wait timed out.
+        return false;
 
-    QMultiHash<const WebPage*, QString> m_applicationSchemes;
-    WebProcess* m_webProcess;
+    case WAIT_FAILED:
+        ASSERT_WITH_MESSAGE(false, "::WaitForSingleObject failed with error %lu", ::GetLastError());
+        return false;
 
-};
+    default:
+        ASSERT_WITH_MESSAGE(false, "::WaitForSingleObject returned unexpected result %lu", result);
+        return false;
+    }
+}
 
-} // namespace WebKit
-
-#endif // QtNetworkAccessManager_h
+} // namespace WTF
