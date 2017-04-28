@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Igalia S.L.
+ * Copyright (C) 2017 Konstantin Tokarev <annulen@yandex.ru>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,35 +20,25 @@
 #include "config.h"
 #include "CustomProtocolManagerProxy.h"
 
-#include "ChildProcessProxy.h"
-#include "CustomProtocolManagerMessages.h"
-#include "CustomProtocolManagerProxyMessages.h"
-#include "WebProcessPool.h"
-#include <WebCore/ResourceRequest.h>
-
 namespace WebKit {
 
 CustomProtocolManagerProxy::CustomProtocolManagerProxy(ChildProcessProxy* childProcessProxy, WebProcessPool& processPool)
     : m_childProcessProxy(childProcessProxy)
     , m_processPool(processPool)
 {
-    ASSERT(m_childProcessProxy);
-    m_childProcessProxy->addMessageReceiver(Messages::CustomProtocolManagerProxy::messageReceiverName(), *this);
 }
 
 CustomProtocolManagerProxy::~CustomProtocolManagerProxy()
 {
-    m_childProcessProxy->removeMessageReceiver(Messages::CustomProtocolManagerProxy::messageReceiverName());
 }
 
 void CustomProtocolManagerProxy::startLoading(uint64_t customProtocolID, const WebCore::ResourceRequest& request)
 {
-// QTFIXME    m_processPool.supplement<WebSoupCustomProtocolRequestManager>()->startLoading(customProtocolID, request);
+    ASSERT_NOT_REACHED();
 }
 
 void CustomProtocolManagerProxy::stopLoading(uint64_t customProtocolID)
 {
-// QTFIXME    m_processPool.supplement<WebSoupCustomProtocolRequestManager>()->stopLoading(customProtocolID);
 }
 
 } // namespace WebKit

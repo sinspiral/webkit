@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Igalia S.L.
+ * Copyright (C) 2017 Konstantin Tokarev <annulen@yandex.ru>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,76 +20,59 @@
 #include "config.h"
 #include "CustomProtocolManager.h"
 
-#include "ChildProcess.h"
-#include "CustomProtocolManagerImpl.h"
-#include "CustomProtocolManagerMessages.h"
-#include "NetworkProcessCreationParameters.h"
-#include "WebProcessCreationParameters.h"
-#include <WebCore/NotImplemented.h>
-
 namespace WebKit {
 
 const char* CustomProtocolManager::supplementName()
 {
-    return "CustomProtocolManager";
+    return "";
 }
 
-CustomProtocolManager::CustomProtocolManager(ChildProcess* childProcess)
-    : m_childProcess(childProcess)
-    , m_messageQueue(WorkQueue::create("com.apple.WebKit.CustomProtocolManager"))
-    , m_impl(std::make_unique<CustomProtocolManagerImpl>(childProcess))
+CustomProtocolManager::CustomProtocolManager(ChildProcess*)
+    : m_impl(nullptr)
 {
 }
 
-void CustomProtocolManager::initializeConnection(IPC::Connection* connection)
+void CustomProtocolManager::initializeConnection(IPC::Connection*)
 {
-    connection->addWorkQueueMessageReceiver(Messages::CustomProtocolManager::messageReceiverName(), m_messageQueue.get(), this);
 }
 
-void CustomProtocolManager::initialize(const NetworkProcessCreationParameters& parameters)
+void CustomProtocolManager::initialize(const NetworkProcessCreationParameters&)
 {
-    for (size_t i = 0; i < parameters.urlSchemesRegisteredForCustomProtocols.size(); ++i)
-        registerScheme(parameters.urlSchemesRegisteredForCustomProtocols[i]);
 }
 
-void CustomProtocolManager::registerScheme(const String& scheme)
+void CustomProtocolManager::registerScheme(const String&)
 {
-// QTFIXME    m_impl->registerScheme(scheme);
+    ASSERT_NOT_REACHED();
 }
 
 void CustomProtocolManager::unregisterScheme(const String&)
 {
-    notImplemented();
 }
 
-bool CustomProtocolManager::supportsScheme(const String& scheme)
+bool CustomProtocolManager::supportsScheme(const String&)
 {
-// QTFIXME    return m_impl->supportsScheme(scheme);
+    return false;
 }
 
-void CustomProtocolManager::didFailWithError(uint64_t customProtocolID, const WebCore::ResourceError& error)
+void CustomProtocolManager::didFailWithError(uint64_t, const WebCore::ResourceError&)
 {
-// QTFIXME    m_impl->didFailWithError(customProtocolID, error);
+    ASSERT_NOT_REACHED();
 }
 
-void CustomProtocolManager::didLoadData(uint64_t customProtocolID, const IPC::DataReference& dataReference)
+void CustomProtocolManager::didLoadData(uint64_t, const IPC::DataReference&)
 {
-// QTFIXME    m_impl->didLoadData(customProtocolID, dataReference);
 }
 
-void CustomProtocolManager::didReceiveResponse(uint64_t customProtocolID, const WebCore::ResourceResponse& response, uint32_t)
+void CustomProtocolManager::didReceiveResponse(uint64_t, const WebCore::ResourceResponse&, uint32_t)
 {
-// QTFIXME    m_impl->didReceiveResponse(customProtocolID, response);
 }
 
-void CustomProtocolManager::didFinishLoading(uint64_t customProtocolID)
+void CustomProtocolManager::didFinishLoading(uint64_t)
 {
-// QTFIXME    m_impl->didFinishLoading(customProtocolID);
 }
 
 void CustomProtocolManager::wasRedirectedToRequest(uint64_t, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&)
 {
-    notImplemented();
 }
 
 } // namespace WebKit

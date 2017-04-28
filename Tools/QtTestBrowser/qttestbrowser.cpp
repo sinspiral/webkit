@@ -47,6 +47,7 @@ WindowOptions windowOptions;
 #include <QFile>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QRegExp>
 
 int launcherMain(const QApplication& app)
 {
@@ -136,8 +137,9 @@ void LauncherApplication::handleUserOptions()
              << "[-no-compositing]"
 #if defined(QT_CONFIGURED_WITH_OPENGL)
              << "[-gl-viewport]"
-             << "[-webgl]"
 #endif
+             << "[-opengl-viewport]"
+             << "[-webgl]"
              << QString("[-viewport-update-mode %1]").arg(formatKeys(updateModes)).toLatin1().data()
 #if !defined(QT_NO_NETWORKDISKCACHE) && !defined(QT_NO_DESKTOPSERVICES)
              << "[-disk-cache]"
@@ -169,7 +171,6 @@ void LauncherApplication::handleUserOptions()
         windowOptions.useGraphicsView = true;
 
     if (args.contains("-no-compositing")) {
-        requiresGraphicsView("-no-compositing");
         windowOptions.useCompositing = false;
     }
 
@@ -245,11 +246,16 @@ void LauncherApplication::handleUserOptions()
         windowOptions.useQGLWidgetViewport = true;
     }
 
+#endif
     if (args.contains("-webgl")) {
-        requiresGraphicsView("-webgl");
         windowOptions.useWebGL = true;
     }
-#endif
+
+    if (args.contains("-opengl-viewport")) {
+        requiresGraphicsView("-opengl-viewport");
+        windowOptions.useQOpenGLWidgetViewport = true;
+    }
+
 
 #if HAVE(QTTESTSUPPORT)
     if (args.contains("-use-test-fonts"))

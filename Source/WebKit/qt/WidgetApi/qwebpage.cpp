@@ -31,6 +31,7 @@
 #include "QtFallbackWebPopup.h"
 #include "QtPlatformPlugin.h"
 #include "UndoStepQt.h"
+#include "WebEventConversion.h"
 
 #include "qwebframe.h"
 #include "qwebframe_p.h"
@@ -48,7 +49,6 @@
 #include <QBitArray>
 #include <QClipboard>
 #include <QColorDialog>
-#include <QDebug>
 #include <QDesktopWidget>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
@@ -207,13 +207,18 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     initializeWebCorePage();
     memset(actions, 0, sizeof(actions));
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     addNotificationPresenterClient();
 #ifndef QT_NO_SYSTEMTRAYICON
     if (!hasSystemTrayIcon())
         setSystemTrayIcon(new QSystemTrayIcon);
 #endif // QT_NO_SYSTEMTRAYICON
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
+
+    qRegisterMetaType<QWebFullScreenRequest>();
+    int fullScreenRequestedIndex = q->metaObject()->indexOfMethod("fullScreenRequested(QWebFullScreenRequest)");
+    Q_ASSERT(fullScreenRequestedIndex != -1);
+    m_fullScreenRequested = q->metaObject()->method(fullScreenRequestedIndex);
 }
 
 void QWebPagePrivate::show()
@@ -323,9 +328,9 @@ QWebFullScreenVideoHandler *QWebPagePrivate::createFullScreenVideoHandler()
 }
 #endif
 
-QWebFrameAdapter *QWebPagePrivate::mainFrameAdapter()
+QWebFrameAdapter& QWebPagePrivate::mainFrameAdapter()
 {
-    return q->mainFrame()->d;
+    return *q->mainFrame()->d;
 }
 
 QStringList QWebPagePrivate::chooseFiles(QWebFrameAdapter *frame, bool allowMultiple, const QStringList &suggestedFileNames)
@@ -472,8 +477,15 @@ QMenu *createContextMenu(QWebPage* page, const QList<MenuItem>& items, QBitArray
         const MenuItem &item = items.at(i);
         switch (item.type) {
         case MenuItem::Action: {
-            QWebPage::WebAction action = webActionForAdapterMenuAction(item.action);
-            QAction *a = page->action(action);
+            QAction* a = nullptr;
+            if (item.action < QWebPageAdapter::ActionCount) {
+                QWebPage::WebAction action = webActionForAdapterMenuAction(static_cast<QWebPageAdapter::MenuAction>(item.action));
+                a = page->action(action);
+                if (a)
+                    visitedWebActions->setBit(action);
+            } else {
+                a = page->customAction(item.action);
+            }
             if (a) {
                 a->setText(item.title);
                 a->setEnabled(item.traits & MenuItem::Enabled);
@@ -481,7 +493,6 @@ QMenu *createContextMenu(QWebPage* page, const QList<MenuItem>& items, QBitArray
                 a->setChecked(item.traits & MenuItem::Checked);
 
                 menu->addAction(a);
-                visitedWebActions->setBit(action);
             }
             break;
         }
@@ -534,6 +545,16 @@ void QWebPagePrivate::_q_webActionTriggered(bool checked)
         return;
     QWebPage::WebAction action = static_cast<QWebPage::WebAction>(a->data().toInt());
     q->triggerAction(action, checked);
+}
+
+void QWebPagePrivate::_q_customActionTriggered(bool checked)
+{
+    Q_UNUSED(checked);
+    QAction* a = qobject_cast<QAction*>(q->sender());
+    if (!a)
+        return;
+    int action = a->data().toInt();
+    triggerCustomAction(action, a->text());
 }
 #endif // QT_NO_ACTION
 
@@ -596,6 +617,12 @@ void QWebPagePrivate::updateNavigationActions()
     updateAction(QWebPage::Stop);
     updateAction(QWebPage::Reload);
     updateAction(QWebPage::ReloadAndBypassCache);
+}
+
+void QWebPagePrivate::clearCustomActions()
+{
+    qDeleteAll(customActions);
+    customActions.clear();
 }
 
 QObject *QWebPagePrivate::inspectorHandle()
@@ -949,7 +976,7 @@ bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
         return false;
     // QGestureEvents can contain updates for multiple gestures.
     bool handled = false;
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     // QGestureEvent lives in Widgets, we'll need a dummy struct to mule the info it contains to the "other side"
     QGestureEventFacade gestureFacade;
 
@@ -973,7 +1000,7 @@ bool QWebPagePrivate::gestureEvent(QGestureEvent* event)
         frame->handleGestureEvent(&gestureFacade);
         handled = true;
     }
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
     event->setAccepted(handled);
     return handled;
@@ -1195,6 +1222,48 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
     \value WebModalDialog The window acts as modal dialog.
 */
 
+/*!
+    \enum QWebPage::PermissionPolicy
+
+    This enum describes the permission policies that the user may set for data or device access.
+
+    \value PermissionUnknown It is unknown whether the user grants or denies permission.
+    \value PermissionGrantedByUser The user has granted permission.
+    \value PermissionDeniedByUser The user has denied permission.
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled(), setFeaturePermission(), Feature
+*/
+
+/*!
+    \enum QWebPage::Feature
+
+    This enum describes the platform feature access categories that the user may be asked to grant or deny access to.
+
+    \value Notifications Access to notifications
+    \value Geolocation Access to location hardware or service
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled(), setFeaturePermission(), PermissionPolicy
+
+*/
+
+/*!
+    \fn void QWebPage::featurePermissionRequested(QWebFrame* frame, QWebPage::Feature feature);
+
+    This is signal is emitted when the given \a frame requests to make use of
+    the resource or device identified by \a feature.
+
+    \sa featurePermissionRequestCanceled(), setFeaturePermission()
+*/
+
+/*!
+    \fn void QWebPage::featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
+
+    This is signal is emitted when the given \a frame cancels a previously issued
+    request to make use of \a feature.
+
+    \sa featurePermissionRequested(), setFeaturePermission()
+
+*/
 
 /*!
     \class QWebPage::ViewportAttributes
@@ -1596,15 +1665,22 @@ bool QWebPage::shouldInterruptJavaScript()
 #endif
 }
 
+/*!
+    \fn void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, PermissionPolicy policy)
+
+    Sets the permission for the given \a frame to use \a feature to \a policy.
+
+    \sa featurePermissionRequested(), featurePermissionRequestCanceled()
+*/
 void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, PermissionPolicy policy)
 {
-#if !ENABLE(NOTIFICATIONS) && !ENABLE(LEGACY_NOTIFICATIONS) && !ENABLE(GEOLOCATION)
+#if !ENABLE(NOTIFICATIONS) && !ENABLE(GEOLOCATION)
     Q_UNUSED(frame);
     Q_UNUSED(policy);
 #endif
     switch (feature) {
     case Notifications:
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
         if (policy != PermissionUnknown)
             d->setNotificationsAllowedForFrame(frame->d, (policy == PermissionGrantedByUser));
 #endif
@@ -1932,11 +2008,11 @@ void QWebPage::setViewportSize(const QSize &size) const
 
     d->updateWindow();
 
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setViewportSize(size);
+    mainFrame.setViewportSize(size);
 }
 
 void QWebPagePrivate::updateWindow()
@@ -2085,11 +2161,11 @@ void QWebPage::setPreferredContentsSize(const QSize& size) const
 
     d->fixedLayoutSize = size;
 
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setCustomLayoutSize(size);
+    mainFrame.setCustomLayoutSize(size);
 }
 
 /*
@@ -2104,11 +2180,11 @@ void QWebPage::setPreferredContentsSize(const QSize& size) const
 */
 void QWebPage::setActualVisibleContentRect(const QRect& rect) const
 {
-    QWebFrameAdapter* mainFrame = d->mainFrameAdapter();
-    if (!mainFrame->hasView())
+    QWebFrameAdapter& mainFrame = d->mainFrameAdapter();
+    if (!mainFrame.hasView())
         return;
 
-    mainFrame->setFixedVisibleContentRect(rect);
+    mainFrame.setFixedVisibleContentRect(rect);
 }
 
 /*!
@@ -2434,6 +2510,21 @@ QAction *QWebPage::action(WebAction action) const
 
     d->actions[action] = a;
     d->updateAction(action);
+    return a;
+}
+
+QAction* QWebPage::customAction(int action) const
+{
+    auto actionIter = d->customActions.constFind(action);
+    if (actionIter != d->customActions.constEnd())
+        return *actionIter;
+
+    QAction* a = new QAction(d->q);
+    a->setData(action);
+    connect(a, SIGNAL(triggered(bool)),
+        this, SLOT(_q_customActionTriggered(bool)));
+
+    d->customActions.insert(action, a);
     return a;
 }
 #endif // QT_NO_ACTION
@@ -3022,7 +3113,7 @@ bool QWebPage::extension(Extension extension, const ExtensionOption *option, Ext
     if (extension == ChooseMultipleFilesExtension) {
         // FIXME: do not ignore suggestedFiles
         QStringList suggestedFiles = static_cast<const ChooseMultipleFilesExtensionOption*>(option)->suggestedFileNames;
-        QStringList names = QFileDialog::getOpenFileNames(view(), QString::null);
+        QStringList names = QFileDialog::getOpenFileNames(view(), QString());
         static_cast<ChooseMultipleFilesExtensionReturn*>(output)->fileNames = names;
         return true;
     }
@@ -3070,7 +3161,8 @@ QWebPageAdapter *QWebPage::handle() const
 */
 bool QWebPage::findText(const QString &subString, FindFlags options)
 {
-    return d->findText(subString, static_cast<QWebPageAdapter::FindFlag>(options.operator int()));
+    return d->findText(subString, static_cast<QWebPageAdapter::FindFlag>(
+        static_cast<FindFlags::Int>(options)));
 }
 
 /*!
@@ -3096,9 +3188,9 @@ QString QWebPage::chooseFile(QWebFrame *parentFrame, const QString& suggestedFil
 {
     Q_UNUSED(parentFrame);
 #ifndef QT_NO_FILEDIALOG
-    return QFileDialog::getOpenFileName(view(), QString::null, suggestedFile);
+    return QFileDialog::getOpenFileName(view(), QString(), suggestedFile);
 #else
-    return QString::null;
+    return QString();
 #endif
 }
 

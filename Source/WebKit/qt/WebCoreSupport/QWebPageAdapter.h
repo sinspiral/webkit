@@ -21,6 +21,7 @@
 #define QWebPageAdapter_h
 
 #include "QWebPageClient.h"
+#include "qwebelement.h"
 #include "qwebhistory.h"
 
 #include <qbasictimer.h>
@@ -55,6 +56,7 @@ struct ViewportArguments;
 
 class QtPluginWidgetAdapter;
 class QWebFrameAdapter;
+class QWebFullScreenRequest;
 class QWebHistoryItem;
 class QWebHitTestResultPrivate;
 class QWebPageClient;
@@ -206,6 +208,7 @@ public:
 #if USE(QT_MULTIMEDIA)
     virtual QWebFullScreenVideoHandler* createFullScreenVideoHandler() = 0;
 #endif
+    virtual void fullScreenRequested(QWebFullScreenRequest) = 0;
     virtual void geolocationPermissionRequested(QWebFrameAdapter*) = 0;
     virtual void geolocationPermissionRequestCancelled(QWebFrameAdapter*) = 0;
     virtual void notificationsPermissionRequested(QWebFrameAdapter*) = 0;
@@ -225,8 +228,9 @@ public:
     virtual void createUndoStep(QSharedPointer<UndoStepQt>) = 0;
 
     virtual void updateNavigationActions() = 0;
+    virtual void clearCustomActions() = 0;
 
-    virtual QWebFrameAdapter* mainFrameAdapter() = 0;
+    virtual QWebFrameAdapter& mainFrameAdapter() = 0;
 
     virtual QObject* inspectorHandle() = 0;
     virtual void setInspectorFrontend(QObject*) = 0;
@@ -270,7 +274,7 @@ public:
             Separator,
             SubMenu
         } type;
-        MenuAction action;
+        int action;
         enum Trait {
             None = 0,
             Enabled = 1,
@@ -286,6 +290,7 @@ public:
     virtual bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) = 0;
 
     virtual void recentlyAudibleChanged(bool) = 0;
+    virtual void focusedElementChanged(const QWebElement&) = 0;
 
     void setVisibilityState(VisibilityState);
     VisibilityState visibilityState() const;
@@ -340,20 +345,21 @@ public:
     QWebHitTestResultPrivate* updatePositionDependentMenuActions(const QPoint&, QBitArray*);
     void updateActionInternal(MenuAction, const char* commandName, bool* enabled, bool* checked);
     void triggerAction(MenuAction, QWebHitTestResultPrivate*, const char* commandName, bool endToEndReload);
+    void triggerCustomAction(int action, const QString &title);
     QString contextMenuItemTagForAction(MenuAction, bool* checkable) const;
 
     QStringList supportedContentTypes() const;
 #if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
     void setGeolocationEnabledForFrame(QWebFrameAdapter*, bool);
 #endif
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     void setNotificationsAllowedForFrame(QWebFrameAdapter*, bool allowed);
     void addNotificationPresenterClient();
 #ifndef QT_NO_SYSTEMTRAYICON
     bool hasSystemTrayIcon() const;
     void setSystemTrayIcon(QObject*);
 #endif // QT_NO_SYSTEMTRAYICON
-#endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#endif // ENABLE(NOTIFICATIONS)
 
     // Called from QWebPage as private slots.
     void _q_cleanupLeakMessages();
@@ -383,6 +389,9 @@ public:
 
     bool isPlayingAudio() const;
 
+    const QWebElement& fullScreenElement() const;
+    void setFullScreenElement(const QWebElement&);
+
     QWebSettings *settings;
 
     WebCore::Page *page;
@@ -406,6 +415,10 @@ private:
     QNetworkAccessManager *networkManager;
     WebCore::DeviceOrientationClient* m_deviceOrientationClient;
     WebCore::DeviceMotionClient* m_deviceMotionClient;
+
+#if ENABLE(FULLSCREEN_API)
+    QWebElement m_fullScreenElement;
+#endif
 
 public:
     static bool drtRun;

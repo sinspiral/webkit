@@ -184,7 +184,6 @@ void QtWebPageEventHandler::handleHoverMoveEvent(QHoverEvent* ev)
 
 void QtWebPageEventHandler::handleDragEnterEvent(QDragEnterEvent* ev)
 {
-    // QTFIXME: See UIProcess/gtk/DragAndDropHandler.cpp
     m_webPageProxy->resetCurrentDragInformation();
     QTransform fromItemTransform = m_webPage->transformFromItem();
     // FIXME: Should not use QCursor::pos()
@@ -262,12 +261,12 @@ void QtWebPageEventHandler::deactivateTapHighlight()
 
 void QtWebPageEventHandler::handleSingleTapEvent(const QTouchEvent::TouchPoint& point)
 {
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     deactivateTapHighlight();
     m_postponeTextInputStateChanged = true;
 
     QTransform fromItemTransform = m_webPage->transformFromItem();
-    WebGestureEvent gesture(WebEvent::GestureSingleTap, fromItemTransform.map(point.pos()).toPoint(), point.screenPos().toPoint(), WebEvent::Modifiers(0), 0, IntSize(point.rect().size().toSize()), FloatPoint(0, 0));
+    WebGestureEvent gesture(WebEvent::GestureSingleTap, fromItemTransform.map(point.pos()).toPoint(), point.screenPos().toPoint(), WebEvent::Modifiers(0), 0, IntSize(point.rect().size().toSize()));
     m_webPageProxy->handleGestureEvent(gesture);
 #endif
 }
@@ -449,7 +448,7 @@ void QtWebPageEventHandler::handleWillSetInputMethodState()
 
 void QtWebPageEventHandler::doneWithGestureEvent(const WebGestureEvent& event, bool wasEventHandled)
 {
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     if (event.type() != WebEvent::GestureSingleTap)
         return;
 

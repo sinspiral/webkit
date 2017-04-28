@@ -31,6 +31,7 @@
 #include <WKAPICast.h>
 #include <WKArray.h>
 #include <WKContextPrivate.h>
+#include <WKData.h>
 #include <WKPage.h>
 #include <WKString.h>
 #include <WKStringQt.h>
@@ -50,7 +51,7 @@ static void initInspectorServer()
 #if ENABLE(INSPECTOR_SERVER)
     QString inspectorEnv = QString::fromUtf8(qgetenv("QTWEBKIT_INSPECTOR_SERVER"));
     if (!inspectorEnv.isEmpty()) {
-        QString bindAddress = QLatin1String("127.0.0.1");
+        QString bindAddress = QStringLiteral("127.0.0.1");
         QString portStr = inspectorEnv;
         int port = 0;
 
@@ -69,7 +70,7 @@ static void initInspectorServer()
 
         bool success = WebInspectorServer::singleton().listen(bindAddress, port);
         if (success) {
-            QString inspectorServerUrl = QString::fromLatin1("http://%1:%2").arg(bindAddress).arg(port);
+            QString inspectorServerUrl = QStringLiteral("http://%1:%2").arg(bindAddress).arg(port);
             qWarning("Inspector server started successfully. Try pointing a WebKit browser to %s", qPrintable(inspectorServerUrl));
         } else
             qWarning("Couldn't start the inspector server on bind address \"%s\" and port \"%d\". In case of invalid input, try something like: \"12345\" or \"192.168.2.14:12345\" (with the address of one of this host's interface).", qPrintable(bindAddress), port);
@@ -90,7 +91,7 @@ static void globalInitialization()
 static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messageName, WKTypeRef messageBody, const void*)
 {
     if (!WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
         && !WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")
 #endif
         )
@@ -104,16 +105,20 @@ static void didReceiveMessageFromInjectedBundle(WKContextRef, WKStringRef messag
     WKArrayRef body = static_cast<WKArrayRef>(messageBody);
     ASSERT(WKArrayGetSize(body) == 2);
     ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 0)) == WKPageGetTypeID());
-    ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
 
     WKPageRef page = static_cast<WKPageRef>(WKArrayGetItemAtIndex(body, 0));
-    WKStringRef str = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
 
-    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(str);
-#ifdef HAVE_WEBCHANNEL
-    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject"))
-        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(str);
+    if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKStringGetTypeID());
+        WKStringRef data = static_cast<WKStringRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtObject(data);
+    }
+#if ENABLE(QT_WEBCHANNEL)
+    else if (WKStringIsEqualToUTF8CString(messageName, "MessageFromNavigatorQtWebChannelTransportObject")) {
+        ASSERT(WKGetTypeID(WKArrayGetItemAtIndex(body, 1)) == WKDataGetTypeID());
+        WKDataRef data = static_cast<WKDataRef>(WKArrayGetItemAtIndex(body, 1));
+        QQuickWebViewPrivate::get(page)->didReceiveMessageFromNavigatorQtWebChannelTransportObject(data);
+    }
 #endif
 }
 

@@ -251,7 +251,7 @@ void QtPageClient::handleWillSetInputMethodState()
     m_eventHandler->handleWillSetInputMethodState();
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 void QtPageClient::doneWithGestureEvent(const WebGestureEvent& event, bool wasEventHandled)
 {
     ASSERT(m_eventHandler);
@@ -266,6 +266,43 @@ void QtPageClient::doneWithTouchEvent(const NativeWebTouchEvent& event, bool was
     m_eventHandler->doneWithTouchEvent(event, wasEventHandled);
 }
 #endif
+
+WebFullScreenManagerProxyClient& QtPageClient::fullScreenManagerProxyClient()
+{
+    return *this;
+}
+
+// QTFIXME: #419
+void QtPageClient::closeFullScreenManager()
+{
+    notImplemented();
+}
+
+bool QtPageClient::isFullScreen()
+{
+    notImplemented();
+    return false;
+}
+
+void QtPageClient::enterFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::exitFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
+
+void QtPageClient::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
 
 void QtPageClient::displayView()
 {
@@ -396,11 +433,13 @@ void QtPageClient::derefView()
 {
 }
 
+#if ENABLE(VIDEO) && USE(GSTREAMER)
 bool QtPageClient::decidePolicyForInstallMissingMediaPluginsPermissionRequest(WebKit::InstallMissingMediaPluginsPermissionRequest&)
 {
     // QTFIXME
     return false;
 }
+#endif
 
 void QtPageClient::didRestoreScrollPosition()
 {

@@ -1,9 +1,7 @@
 include(FeatureSummary)
 include(ECMPackageConfigHelpers)
-include(ECMQueryQmake)
 
 set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
-include(KDEInstallDirs)
 
 set(QT_CONAN_DIR "" CACHE PATH "Directory containing conanbuildinfo.cmake and conanfile.txt")
 if (QT_CONAN_DIR)
@@ -34,7 +32,10 @@ macro(CONVERT_PRL_LIBS_TO_CMAKE _qt_component)
     if (TARGET Qt5::${_qt_component})
         get_target_property(_lib_location Qt5::${_qt_component} LOCATION)
         execute_process(COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/convert-prl-libs-to-cmake.pl
-            ${_lib_location} ${_qt_component} ${STATIC_DEPENDENCIES_CMAKE_FILE}
+            --lib ${_lib_location}
+            --out ${STATIC_DEPENDENCIES_CMAKE_FILE}
+            --component ${_qt_component}
+            --compiler ${CMAKE_CXX_COMPILER_ID}
         )
     endif ()
 endmacro()
@@ -48,28 +49,49 @@ endmacro()
 
 set(PROJECT_VERSION_MAJOR 5)
 set(PROJECT_VERSION_MINOR 602)
-set(PROJECT_VERSION_MICRO 2)
+set(PROJECT_VERSION_MICRO 3)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(PROJECT_VERSION_STRING "${PROJECT_VERSION}")
 
 set(CMAKE_MACOSX_RPATH ON)
 
 add_definitions(-DBUILDING_QT__=1)
+add_definitions(-DQT_NO_EXCEPTIONS)
+add_definitions(-DQT_USE_QSTRINGBUILDER)
+add_definitions(-DQT_NO_CAST_TO_ASCII -DQT_ASCII_CAST_WARNINGS)
+add_definitions(-DQT_DEPRECATED_WARNINGS -DQT_DISABLE_DEPRECATED_BEFORE=0x050000)
+
+# We use -fno-rtti with GCC and Clang, see OptionsCommon.cmake
+if (COMPILER_IS_GCC_OR_CLANG)
+    add_definitions(-DQT_NO_DYNAMIC_CAST)
+endif ()
+
+if (WIN32)
+    if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
+        set(CMAKE_DEBUG_POSTFIX d)
+    endif ()
+
+    set(CMAKE_SHARED_LIBRARY_PREFIX "")
+    set(CMAKE_SHARED_MODULE_PREFIX "")
+endif ()
 
 WEBKIT_OPTION_BEGIN()
 
 if (APPLE)
     option(MACOS_FORCE_SYSTEM_XML_LIBRARIES "Use system installation of libxml2 and libxslt on macOS" ON)
+    set(MACOS_BUILD_FRAMEWORKS ON) # TODO: Make it an option
 endif ()
 
 if (WIN32 OR APPLE)
     set(USE_LIBHYPHEN_DEFAULT OFF)
     set(USE_GSTREAMER_DEFAULT OFF)
     set(USE_QT_MULTIMEDIA_DEFAULT ON)
+    set(ENABLE_WEBKIT2_DEFAULT OFF)
 else ()
     set(USE_LIBHYPHEN_DEFAULT ON)
     set(USE_GSTREAMER_DEFAULT ON)
     set(USE_QT_MULTIMEDIA_DEFAULT OFF)
+    set(ENABLE_WEBKIT2_DEFAULT ON)
 endif ()
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
@@ -99,29 +121,42 @@ else ()
     set(ENABLE_NETSCAPE_PLUGIN_API_DEFAULT OFF)
 endif ()
 
+# Public options specific to the Qt port. Do not add any options here unless
+# there is a strong reason we should support changing the value of the option,
+# and the option is not relevant to any other WebKit ports.
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER "Use GStreamer implementation of MediaPlayer" PUBLIC ${USE_GSTREAMER_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_LIBHYPHEN "Use automatic hyphenation with LibHyphen" PUBLIC ${USE_LIBHYPHEN_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_MEDIA_FOUNDATION "Use MediaFoundation implementation of MediaPlayer" PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_QT_MULTIMEDIA "Use Qt Multimedia implementation of MediaPlayer" PUBLIC ${USE_QT_MULTIMEDIA_DEFAULT})
 WEBKIT_OPTION_DEFINE(USE_WOFF2 "Include support of WOFF2 fonts format" PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_INSPECTOR_UI "Include Inspector UI into resources" PUBLIC ON)
-WEBKIT_OPTION_DEFINE(ENABLE_OPENGL "Whether to use OpenGL." PUBLIC OFF)
+WEBKIT_OPTION_DEFINE(ENABLE_OPENGL "Whether to use OpenGL." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_QT_GESTURE_EVENTS "Enable support for gesture events (required for mouse in WK2)" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_QT_WEBCHANNEL "Enable support for Qt WebChannel" PUBLIC ON)
+WEBKIT_OPTION_DEFINE(ENABLE_WEBKIT2 "Enable WebKit2 (QML API)" PUBLIC ${ENABLE_WEBKIT2_DEFAULT})
 WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC ${ENABLE_X11_TARGET_DEFAULT})
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
-option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON)
+cmake_dependent_option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON
+                                           "DEVELOPER_MODE" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
+
+# Private options specific to the Qt port. Changing these options is
+# completely unsupported. They are intended for use only by WebKit developers.
+WEBKIT_OPTION_DEFINE(ENABLE_TOUCH_ADJUSTMENT "Whether to use touch adjustment" PRIVATE ON)
+
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ACCELERATED_2D_CANVAS PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_ALLINONE_BUILD PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_API_TESTS PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_GRID_LAYOUT PUBLIC ON)
-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATABASE_PROCESS PUBLIC OFF)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATABASE_PROCESS PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DATALIST_ELEMENT PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DEVICE_ORIENTATION PUBLIC ON)
-WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FULLSCREEN_API PUBLIC OFF)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FULLSCREEN_API PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_GAMEPAD_DEPRECATED PUBLIC ${ENABLE_GAMEPAD_DEPRECATED_DEFAULT})
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_INDEXED_DATABASE PUBLIC ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_LEGACY_WEB_AUDIO PUBLIC ${USE_GSTREAMER_DEFAULT})
@@ -144,6 +179,7 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(USE_SYSTEM_MALLOC PUBLIC OFF)
 # Private options shared with other WebKit ports. Add options here when
 # we need a value different from the default defined in WebKitFeatures.cmake.
 # Changing these options is completely unsupported.
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_3D_TRANSFORMS PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_IMAGE_SET PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_REGIONS PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_CSS_SHAPES PRIVATE ON)
@@ -153,18 +189,32 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_DOWNLOAD_ATTRIBUTE PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTL_JIT PRIVATE ${ENABLE_FTL_DEFAULT})
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTPDIR PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_INPUT_TYPE_COLOR PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_INPUT_TYPE_COLOR_POPOVER PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MEDIA_CONTROLS_SCRIPT PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MHTML PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_NOTIFICATIONS PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_SMOOTH_SCROLLING PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_USERSELECT_ALL PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_VIDEO_TRACK PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_TIMING PRIVATE ON)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEBGL PRIVATE ON)
 
-WEBKIT_OPTION_DEPEND(ENABLE_MEDIA_SOURCE ENABLE_VIDEO)
+if (MINGW AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_JIT PRIVATE OFF)
+endif ()
 
-# WebAudio is supported with GStreamer only
+WEBKIT_OPTION_CONFLICT(USE_GSTREAMER USE_QT_MULTIMEDIA)
+
+WEBKIT_OPTION_DEPEND(ENABLE_3D_TRANSFORMS ENABLE_OPENGL)
+WEBKIT_OPTION_DEPEND(ENABLE_ACCELERATED_2D_CANVAS ENABLE_OPENGL)
+WEBKIT_OPTION_DEPEND(ENABLE_WEBGL ENABLE_OPENGL)
+
+# WebAudio and MediaSource are supported with GStreamer only
 WEBKIT_OPTION_DEPEND(ENABLE_WEB_AUDIO USE_GSTREAMER)
 WEBKIT_OPTION_DEPEND(ENABLE_LEGACY_WEB_AUDIO USE_GSTREAMER)
+WEBKIT_OPTION_DEPEND(ENABLE_MEDIA_SOURCE USE_GSTREAMER)
+
+WEBKIT_OPTION_DEPEND(ENABLE_QT_WEBCHANNEL ENABLE_WEBKIT2)
 
 # While it's possible to have UI-less NPAPI plugins without X11, we don't support this case yet
 if (UNIX AND NOT APPLE)
@@ -194,13 +244,13 @@ if (APPLE AND CMAKE_SYSTEM_VERSION VERSION_LESS 14.0.0)
 endif ()
 
 set(ENABLE_WEBKIT ON)
-set(ENABLE_WEBKIT2 ON)
 set(WTF_USE_UDIS86 1)
 
 get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
 if (QT_CORE_TYPE MATCHES STATIC)
     set(QT_STATIC_BUILD ON)
     set(SHARED_CORE OFF)
+    set(MACOS_BUILD_FRAMEWORKS OFF)
 endif ()
 
 if (SHARED_CORE)
@@ -259,6 +309,7 @@ if (DEFINED ENV{SQLITE3SRCDIR})
     endif ()
     add_library(qtsqlite STATIC ${SQLITE_SOURCE_FILE})
     target_compile_definitions(qtsqlite PUBLIC -DSQLITE_CORE -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_COMPLETE)
+    WEBKIT_SET_EXTRA_COMPILER_FLAGS(qtsqlite)
     set(SQLITE_LIBRARIES qtsqlite)
     set(SQLITE_FOUND 1)
 else ()
@@ -305,10 +356,10 @@ else ()
 endif ()
 
 if (MACOS_FORCE_SYSTEM_XML_LIBRARIES)
-    set(LIBXML2_INCLUDE_DIR "/usr/include/libxml2")
+    set(LIBXML2_INCLUDE_DIR "${CMAKE_OSX_SYSROOT}/usr/include/libxml2")
     set(LIBXML2_LIBRARIES xml2)
     if (ENABLE_XSLT)
-        set(LIBXSLT_INCLUDE_DIR "/usr/include/libxslt")
+        set(LIBXSLT_INCLUDE_DIR "${CMAKE_OSX_SYSROOT}/usr/include/libxslt")
         set(LIBXSLT_LIBRARIES xslt)
     endif ()
 else ()
@@ -331,7 +382,7 @@ if (WEBP_FOUND)
 endif ()
 
 set(REQUIRED_QT_VERSION 5.2.0)
-set(QT_REQUIRED_COMPONENTS Core Gui Network Sql)
+set(QT_REQUIRED_COMPONENTS Core Gui Network)
 
 # FIXME: Allow building w/o these components
 list(APPEND QT_REQUIRED_COMPONENTS
@@ -343,6 +394,11 @@ if (ENABLE_API_TESTS OR ENABLE_TEST_SUPPORT)
     list(APPEND QT_REQUIRED_COMPONENTS
         Test
     )
+    if (ENABLE_WEBKIT2)
+        list(APPEND QT_REQUIRED_COMPONENTS
+            QuickTest
+        )
+    endif ()
 endif ()
 
 if (ENABLE_GEOLOCATION)
@@ -363,6 +419,19 @@ endif ()
 if (ENABLE_WEBKIT2)
     list(APPEND QT_REQUIRED_COMPONENTS
         Quick
+    )
+    SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
+    SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS_MULTIPROCESS TRUE)
+
+    if (ENABLE_OPENGL AND ENABLE_X11_TARGET AND Qt5Gui_OPENGL_IMPLEMENTATION STREQUAL GL)
+        SET_AND_EXPOSE_TO_BUILD(USE_GLX 1)
+        SET_AND_EXPOSE_TO_BUILD(USE_GRAPHICS_SURFACE 1)
+    endif ()
+endif ()
+
+if (ENABLE_QT_WEBCHANNEL)
+    list(APPEND QT_REQUIRED_COMPONENTS
+        WebChannel
     )
 endif ()
 
@@ -415,7 +484,7 @@ set(CMAKE_AUTOMOC ON)
 if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
     if (NOT APPLE)
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
         set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
     endif ()
 
@@ -427,6 +496,10 @@ endif ()
 
 if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport")
+endif ()
+
+if (APPLE)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QOS_CLASSES 1)
 endif ()
 
 if (ENABLE_MATHML)
@@ -447,14 +520,27 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         SET_AND_EXPOSE_TO_BUILD(ENABLE_NETSCAPE_PLUGIN_METADATA_CACHE 1)
         SET_AND_EXPOSE_TO_BUILD(ENABLE_PLUGIN_PACKAGE_SIMPLE_HASH 1)
     endif ()
+
+    if (ENABLE_WEBKIT2)
+        if (ENABLE_X11_TARGET)
+            set(ENABLE_PLUGIN_PROCESS 1)
+            SET_AND_EXPOSE_TO_BUILD(PLUGIN_ARCHITECTURE_X11 1)
+            SET_AND_EXPOSE_TO_BUILD(PLUGIN_ARCHITECTURE_UNSUPPORTED 0)
+        else ()
+            SET_AND_EXPOSE_TO_BUILD(PLUGIN_ARCHITECTURE_X11 0)
+            SET_AND_EXPOSE_TO_BUILD(PLUGIN_ARCHITECTURE_UNSUPPORTED 1)
+        endif ()
+    endif ()
 endif ()
 
 if (ENABLE_X11_TARGET)
     find_package(X11 REQUIRED)
-    if (NOT X11_Xcomposite_FOUND)
-        message(FATAL_ERROR "libXcomposite is required for ENABLE_X11_TARGET")
-    elseif (NOT X11_Xrender_FOUND)
-        message(FATAL_ERROR "libXrender is required for ENABLE_X11_TARGET")
+    if (GRAPHICS_SURFACE)
+        if (NOT X11_Xcomposite_FOUND)
+            message(FATAL_ERROR "libXcomposite is required for GRAPHICS_SURFACE on X11")
+        elseif (NOT X11_Xrender_FOUND)
+            message(FATAL_ERROR "libXrender is required for GRAPHICS_SURFACE on X11")
+        endif ()
     endif ()
 endif ()
 
@@ -462,10 +548,15 @@ if (ENABLE_OPENGL)
     SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER_GL TRUE)
     SET_AND_EXPOSE_TO_BUILD(ENABLE_GRAPHICS_CONTEXT_3D TRUE)
 
-SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
-SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS_MULTIPROCESS TRUE)
-#SET_AND_EXPOSE_TO_BUILD(USE_GRAPHICS_SURFACE TRUE)
-#SET_AND_EXPOSE_TO_BUILD(USE_GLX TRUE)
+    # TODO: Add proper support of DynamicGL detection to Qt and use it
+    if (WIN32)
+        if  (QT_USES_GLES2_ONLY)
+            # FIXME: Fix build with ANGLE-only Qt
+            message(FATAL_ERROR "Only dynamic GL is supported on Windows at the moment")
+        else ()
+            set(Qt5Gui_OPENGL_IMPLEMENTATION GL)
+        endif ()
+    endif ()
 endif ()
 
 if (NOT ENABLE_VIDEO)
@@ -617,8 +708,6 @@ if (MSVC)
             set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FASTLINK")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG:FASTLINK")
         endif ()
-
-        set(CMAKE_DEBUG_POSTFIX d)
     elseif (${CMAKE_BUILD_TYPE} MATCHES "Release")
         add_compile_options(/Oy-)
     endif ()
@@ -643,7 +732,9 @@ if (MSVC)
         endforeach ()
     endif ()
 
-    set(ICU_LIBRARIES icuuc${CMAKE_DEBUG_POSTFIX} icuin${CMAKE_DEBUG_POSTFIX} icudt${CMAKE_DEBUG_POSTFIX})
+    if (NOT QT_CONAN_DIR)
+        set(ICU_LIBRARIES icuuc${CMAKE_DEBUG_POSTFIX} icuin${CMAKE_DEBUG_POSTFIX} icudt${CMAKE_DEBUG_POSTFIX})
+    endif ()
 endif ()
 
 if (NOT RUBY_FOUND AND RUBY_EXECUTABLE AND NOT RUBY_VERSION VERSION_LESS 1.9)
@@ -659,3 +750,22 @@ endif ()
 set_package_properties(Ruby PROPERTIES TYPE REQUIRED)
 set_package_properties(Qt5PrintSupport PROPERTIES PURPOSE "Required for ENABLE_PRINT_SUPPORT=ON")
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
+
+
+include(ECMQueryQmake)
+
+query_qmake(qt_install_prefix_dir QT_INSTALL_PREFIX)
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${qt_install_prefix_dir}" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+endif ()
+
+include(KDEInstallDirs)
+
+if (NOT qt_install_prefix_dir STREQUAL "${CMAKE_INSTALL_PREFIX}")
+    set(KDE_INSTALL_USE_QT_SYS_PATHS OFF)
+endif ()
+
+# We split all installed files into 2 components: Code and Data. This is different from
+# traditional approach with Runtime and Devel, but we need it to fix concurrent installation of
+# debug and release builds in qmake-based build
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "Code")

@@ -135,8 +135,8 @@ public:
     void handleDownloadRequest(WebKit::DownloadProxy*);
 
     void didReceiveMessageFromNavigatorQtObject(WKStringRef message);
-#ifdef HAVE_WEBCHANNEL
-    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKStringRef message);
+#if ENABLE(QT_WEBCHANNEL)
+    void didReceiveMessageFromNavigatorQtWebChannelTransportObject(WKDataRef);
 #endif
 
     WebKit::CoordinatedGraphicsScene* coordinatedGraphicsScene();
@@ -181,8 +181,6 @@ protected:
     QQuickWebViewPrivate(QQuickWebView* viewport);
     RefPtr<WebKit::WebPageProxy> webPageProxy;
     WKRetainPtr<WKPageRef> webPage;
-    WKRetainPtr<WKPageConfigurationRef> pageConfiguration;
-//    WKRetainPtr<WKPageGroupRef> pageGroup;
 
     WebKit::QtPageClient pageClient;
     WebKit::DefaultUndoController undoController;

@@ -1,6 +1,3 @@
-# FIXME: It should be in WebKitFS actually
-set(FORWARDING_HEADERS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders")
-
 add_custom_target(WebKitTestRunner-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_TESTRUNNER_DIR} --output ${FORWARDING_HEADERS_DIR} --platform qt
 )

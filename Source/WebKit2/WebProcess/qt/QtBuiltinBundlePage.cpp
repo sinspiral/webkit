@@ -27,15 +27,20 @@
 #include "config.h"
 #include "QtBuiltinBundlePage.h"
 
+#include "APIData.h"
 #include "QtBuiltinBundle.h"
 #include "WKArray.h"
 #include "WKBundleFrame.h"
+#include "WKData.h"
 #include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WKStringPrivate.h"
 #include "WKStringQt.h"
 #include <JavaScript.h>
+#include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSRetainPtr.h>
+#include <QDebug>
+#include <QJsonDocument>
 
 namespace WebKit {
 
@@ -127,11 +132,29 @@ static void callOnMessage(JSObjectRef object, WKStringRef contents, WKBundlePage
     JSObjectCallAsFunction(context, onmessageFunction, 0, 1, &wrappedMessage, 0);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 static JSClassRef navigatorQtWebChannelTransportObjectClass()
 {
     static JSClassRef classRef = createEmptyJSClassRef();
     return classRef;
+}
+
+static QByteArray convertJsonTextToBinary(const CString& textJson)
+{
+    QByteArray jsonData = QByteArray::fromRawData(textJson.data(), textJson.length());
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qWarning() << "Failed to parse the client WebKit QWebChannel message as JSON: " << jsonData
+            << "Error message is:" << error.errorString();
+        return QByteArray();
+    }
+    if (!doc.isObject()) {
+        qWarning() << "Received WebKit QWebChannel message is not a JSON object: " << jsonData;
+        return QByteArray();
+    }
+    return doc.toBinaryData();
 }
 
 static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
@@ -144,10 +167,16 @@ static JSValueRef qt_postWebChannelMessageCallback(JSContextRef context, JSObjec
     QtBuiltinBundlePage* bundlePage = reinterpret_cast<QtBuiltinBundlePage*>(JSObjectGetPrivate(thisObject));
     ASSERT(bundlePage);
 
-    // TODO: can we transmit the data as JS object, instead of as a string?
-    JSRetainPtr<JSStringRef> jsContents = JSValueToStringCopy(context, arguments[0], 0);
-    WKRetainPtr<WKStringRef> contents(AdoptWK, WKStringCreateWithJSString(jsContents.get()));
-    bundlePage->postMessageFromNavigatorQtWebChannelTransport(contents.get());
+    JSC::ExecState* exec = toJS(context);
+    JSC::JSLockHolder locker(exec);
+
+    JSC::JSValue jsValue = toJS(exec, arguments[0]);
+    CString textJson = jsValue.toString(exec)->value(exec).utf8();
+
+    QByteArray message = convertJsonTextToBinary(textJson);
+    if (!message.isEmpty())
+        bundlePage->postMessageFromNavigatorQtWebChannelTransport(WKDataCreate(reinterpret_cast<const unsigned char*>(message.data()), message.length()));
+
     return JSValueMakeUndefined(context);
 }
 #endif
@@ -157,7 +186,7 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
     , m_page(page)
     , m_navigatorQtObject(0)
     , m_navigatorQtObjectEnabled(false)
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     , m_navigatorQtWebChannelTransportObject(0)
 #endif
 {
@@ -172,7 +201,7 @@ QtBuiltinBundlePage::QtBuiltinBundlePage(QtBuiltinBundle* bundle, WKBundlePageRe
 QtBuiltinBundlePage::~QtBuiltinBundlePage()
 {
     if (!m_navigatorQtObject
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
         && !m_navigatorQtWebChannelTransportObject
 #endif
     )
@@ -186,7 +215,7 @@ QtBuiltinBundlePage::~QtBuiltinBundlePage()
     if (m_navigatorQtObject)
         JSValueUnprotect(context, m_navigatorQtObject);
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     if (m_navigatorQtWebChannelTransportObject)
         JSValueUnprotect(context, m_navigatorQtWebChannelTransportObject);
 #endif
@@ -203,7 +232,7 @@ void QtBuiltinBundlePage::didClearWindowForFrame(WKBundleFrameRef frame, WKBundl
         return;
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContextForWorld(frame, world);
     registerNavigatorQtObject(context);
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
     registerNavigatorQtWebChannelTransportObject(context);
 #endif
 }
@@ -236,7 +265,7 @@ void QtBuiltinBundlePage::registerNavigatorQtObject(JSGlobalContextRef context)
                             postMessageName, &qt_postMessageCallback);
 }
 
-#ifdef HAVE_WEBCHANNEL
+#if ENABLE(QT_WEBCHANNEL)
 void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalContextRef context)
 {
     static JSStringRef name = JSStringCreateWithUTF8CString("qtWebChannelTransport");
@@ -246,19 +275,26 @@ void QtBuiltinBundlePage::registerNavigatorQtWebChannelTransportObject(JSGlobalC
                             postMessageName, &qt_postWebChannelMessageCallback);
 }
 
-void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKStringRef contents)
+void QtBuiltinBundlePage::didReceiveMessageToNavigatorQtWebChannelTransport(WKDataRef contents)
 {
-    callOnMessage(m_navigatorQtWebChannelTransportObject, contents, m_page);
+    const char* bytes = reinterpret_cast<const char*>(WKDataGetBytes(contents));
+    int size = WKDataGetSize(contents);
+    QJsonDocument doc = QJsonDocument::fromRawData(bytes, size, QJsonDocument::BypassValidation);
+    ASSERT(doc.isObject());
+
+    QByteArray textJson = doc.toJson(QJsonDocument::Compact);
+    WKStringRef message = WKStringCreateWithUTF8CString(textJson.constData());
+    callOnMessage(m_navigatorQtWebChannelTransportObject, message, m_page);
 }
 
-void QtBuiltinBundlePage::postMessageFromNavigatorQtWebChannelTransport(WKStringRef message)
+void QtBuiltinBundlePage::postMessageFromNavigatorQtWebChannelTransport(WKDataRef message)
 {
     static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageFromNavigatorQtWebChannelTransportObject");
     postNavigatorMessage(messageName, message);
 }
 #endif
 
-void QtBuiltinBundlePage::postNavigatorMessage(WKStringRef messageName, WKStringRef message)
+void QtBuiltinBundlePage::postNavigatorMessage(WKStringRef messageName, WKTypeRef message)
 {
     WKTypeRef body[] = { page(), message };
     WKRetainPtr<WKArrayRef> messageBody(AdoptWK, WKArrayCreate(body, sizeof(body) / sizeof(WKTypeRef)));

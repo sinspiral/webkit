@@ -49,6 +49,7 @@
 #include "FloatConversion.h"
 #include "Font.h"
 #include "ImageBuffer.h"
+#include "ImageBufferDataQt.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "Pattern.h"
@@ -959,15 +960,8 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     if (paintingDisabled())
         return;
 
-    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
-    QPixmap* nativeImage = image->nativeImageForCurrentFrame();
-    if (!nativeImage)
-        return;
-
     IntRect rect = enclosingIntRect(destRect);
-    QPixmap alphaMask = *nativeImage;
-
-    pushTransparencyLayerInternal(rect, 1.0, alphaMask);
+    buffer.m_data.m_impl->clip(*this, rect);
 }
 
 void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& color, bool antiAliasing)
@@ -1265,7 +1259,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& frect, RoundingM
     return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
-void GraphicsContext::setPlatformShadow(const FloatSize& size, float blur, const Color& color)
+void GraphicsContext::setPlatformShadow(const FloatSize& size, float, const Color&)
 {
     // Qt doesn't support shadows natively, they are drawn manually in the draw*
     // functions
@@ -1553,7 +1547,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     m_data->p()->setWorldTransform(transform);
 }
 
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_TRANSFORMS)
 TransformationMatrix GraphicsContext::get3DTransform() const
 {
     if (paintingDisabled())
@@ -1589,7 +1583,8 @@ void GraphicsContext::setURLForRect(const URL& url, const IntRect& rect)
     if (p->paintEngine()->type() == QPaintEngine::Pdf)
         static_cast<QPdfEngine *>(p->paintEngine())->drawHyperlink(p->worldTransform().mapRect(rect), url);
 #else
-    notImplemented();
+    UNUSED_PARAM(url);
+    UNUSED_PARAM(rect);
 #endif
 }
 
@@ -1757,6 +1752,10 @@ void GraphicsContext::takeOwnershipOfPlatformContext()
     m_data->takeOwnershipOfPlatformContext();
 }
 
+bool GraphicsContext::isAcceleratedContext() const
+{
+    return (platformContext()->paintEngine()->type() == QPaintEngine::OpenGL2);
 }
 
+}
 // vim: ts=4 sw=4 et

@@ -29,14 +29,8 @@
 
 namespace WebKit {
 
-class ChildProcess;
-
 class CustomProtocolManagerImpl {
     WTF_MAKE_NONCOPYABLE(CustomProtocolManagerImpl);
-public:
-    explicit CustomProtocolManagerImpl(ChildProcess*);
-    ~CustomProtocolManagerImpl();
-
 };
 
 } // namespace WebKit

@@ -28,10 +28,10 @@
 
 #include "NetworkProcessCreationParameters.h"
 #include "QtNetworkAccessManager.h"
-#include "CookieJarQt.h"
 
+#include <QNetworkDiskCache>
 #include <WebCore/CertificateInfo.h>
-#include <QDebug>
+#include <WebCore/CookieJarQt.h>
 
 using namespace WebCore;
 
@@ -39,48 +39,39 @@ namespace WebKit {
 
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
-    qDebug() << Q_FUNC_INFO;
-
-    m_networkAccessManager = new QtNetworkAccessManager(nullptr);
-
     if (!parameters.cookiePersistentStoragePath.isEmpty()) {
         WebCore::SharedCookieJarQt* jar = WebCore::SharedCookieJarQt::create(parameters.cookiePersistentStoragePath);
-        m_networkAccessManager->setCookieJar(jar);
+        m_networkAccessManager.setCookieJar(jar);
         // Do not let QNetworkAccessManager delete the jar.
         jar->setParent(0);
     }
 
-//    if (!parameters.diskCacheDirectory.isEmpty()) {
-//        QNetworkDiskCache* diskCache = new QNetworkDiskCache();
-//        diskCache->setCacheDirectory(parameters.diskCacheDirectory);
-//        // The m_networkAccessManager takes ownership of the diskCache object upon the following call.
-//        m_networkAccessManager->setCache(diskCache);
-//    }
+    if (!parameters.diskCacheDirectory.isEmpty()) {
+        QNetworkDiskCache* diskCache = new QNetworkDiskCache();
+        diskCache->setCacheDirectory(parameters.diskCacheDirectory);
+        // The m_networkAccessManager takes ownership of the diskCache object upon the following call.
+        m_networkAccessManager.setCache(diskCache);
+    }
 }
 
 void NetworkProcess::platformTerminate()
 {
-    qDebug() << Q_FUNC_INFO;
 }
 
 void NetworkProcess::allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String&)
 {
-    qDebug() << Q_FUNC_INFO;
 }
 
 void NetworkProcess::clearCacheForAllOrigins(uint32_t)
 {
-    qDebug() << Q_FUNC_INFO;
 }
 
 void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point, std::function<void()>)
 {
-    qDebug() << Q_FUNC_INFO;
 }
 
 void NetworkProcess::platformSetCacheModel(CacheModel)
 {
-    qDebug() << Q_FUNC_INFO;
 }
 
 } // namespace WebKit

@@ -148,14 +148,18 @@ void QWebSettingsPrivate::apply()
         settings->setDNSPrefetchingEnabled(value);
 
         value = attributes.value(QWebSettings::JavascriptEnabled,
-                                      global->attributes.value(QWebSettings::JavascriptEnabled));
+                                 global->attributes.value(QWebSettings::JavascriptEnabled));
         settings->setScriptEnabled(value);
         value = attributes.value(QWebSettings::AcceleratedCompositingEnabled,
                                       global->attributes.value(QWebSettings::AcceleratedCompositingEnabled));
 
-        // FIXME: Temporary disabled until AC is fully working
-        // settings->setAcceleratedCompositingEnabled(value);
-        settings->setAcceleratedCompositingEnabled(false);
+        settings->setAcceleratedCompositingEnabled(value);
+
+#if ENABLE(ACCELERATED_2D_CANVAS)
+        value = value && attributes.value(QWebSettings::Accelerated2dCanvasEnabled,
+                                          global->attributes.value(QWebSettings::Accelerated2dCanvasEnabled));
+        settings->setAccelerated2dCanvasEnabled(value);
+#endif
 
         bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
         settings->setShowDebugBorders(showDebugVisuals);
@@ -268,6 +272,11 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::LocalContentCanAccessFileUrls));
         settings->setAllowFileAccessFromFileURLs(value);
 
+        value = attributes.value(QWebSettings::AllowRunningInsecureContent,
+                                      global->attributes.value(QWebSettings::AllowRunningInsecureContent));
+        settings->setAllowDisplayOfInsecureContent(value);
+        settings->setAllowRunningOfInsecureContent(value);
+
         value = attributes.value(QWebSettings::XSSAuditingEnabled,
                                       global->attributes.value(QWebSettings::XSSAuditingEnabled));
         settings->setXSSAuditorEnabled(value);
@@ -299,6 +308,14 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::SiteSpecificQuirksEnabled,
                                       global->attributes.value(QWebSettings::SiteSpecificQuirksEnabled));
         settings->setNeedsSiteSpecificQuirks(value);
+
+#if ENABLE(FULLSCREEN_API)
+        value = attributes.value(QWebSettings::FullScreenSupportEnabled, global->attributes.value(QWebSettings::FullScreenSupportEnabled));
+        settings->setFullScreenEnabled(value);
+#endif
+
+        value = attributes.value(QWebSettings::ImagesEnabled, global->attributes.value(QWebSettings::ImagesEnabled));
+        settings->setImagesEnabled(value);
 
         settings->setUsesPageCache(WebCore::PageCache::singleton().maxSize());
     } else {
@@ -508,15 +525,23 @@ QWebSettings* QWebSettings::globalSettings()
         This is disabled by default.
     \value SiteSpecificQuirksEnabled This setting enables WebKit's workaround for broken sites. It is
         enabled by default.
+    \value CSSRegionsEnabled This setting enables support for the CSS 3 Regions module. This
+        CSS module is currently only a draft and support for it is enabled by default.
     \value ScrollAnimatorEnabled This setting enables animated scrolling. It is disabled by default.
     \value CaretBrowsingEnabled This setting enables caret browsing. It is disabled by default.
     \value NotificationsEnabled Specifies whether support for the HTML 5 web notifications is enabled
         or not. This is enabled by default.
+    \value Accelerated2dCanvasEnabled Specifies whether the HTML5 2D canvas should be a OpenGL framebuffer.
+        This makes many painting operations faster, but slows down pixel access. This is disabled by default.
     \value WebSecurityEnabled Specifies whether browser should enforce same-origin policy for scripts downloaded
         from remote servers. This setting is set to true by default. Note that setting this flag to false is
         strongly discouraged as it makes the browser more prone to malicious code. This setting is intended
         primarily for site-specific browsers (i.e. when the user can't navigate to unsecure web page) and for testing
         web applications before deployment.
+    \value WebGLEnabled This setting enables support for WebGL.
+        It is enabled by default.
+    \value HyperlinkAuditingEnabled This setting enables support for hyperlink auditing (<a ping>).
+        It is disabled by default.
 */
 
 /*!
@@ -574,7 +599,11 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::ScrollAnimatorEnabled, false);
     d->attributes.insert(QWebSettings::CaretBrowsingEnabled, false);
     d->attributes.insert(QWebSettings::NotificationsEnabled, true);
+    d->attributes.insert(QWebSettings::Accelerated2dCanvasEnabled, false);
     d->attributes.insert(QWebSettings::WebSecurityEnabled, true);
+    d->attributes.insert(QWebSettings::FullScreenSupportEnabled, true);
+    d->attributes.insert(QWebSettings::ImagesEnabled, true);
+    d->attributes.insert(QWebSettings::AllowRunningInsecureContent, false);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
     d->thirdPartyCookiePolicy = AlwaysAllowThirdPartyCookies;

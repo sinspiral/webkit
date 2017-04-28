@@ -31,6 +31,7 @@
 #include <qgesture.h>
 #include <qgraphicssceneevent.h>
 #include <qgraphicswidget.h>
+#include <qmetaobject.h>
 #include <qnetworkproxy.h>
 
 
@@ -96,11 +97,12 @@ public:
 #if USE(QT_MULTIMEDIA)
     QWebFullScreenVideoHandler* createFullScreenVideoHandler() override;
 #endif
-    QWebFrameAdapter* mainFrameAdapter() override;
+    QWebFrameAdapter& mainFrameAdapter() override;
     QStringList chooseFiles(QWebFrameAdapter*, bool allowMultiple, const QStringList& suggestedFileNames) override;
     QColor colorSelectionRequested(const QColor& selectedColor) override;
     std::unique_ptr<QWebSelectMethod> createSelectPopup() override;
     QRect viewRectRelativeToWindow() override;
+    void fullScreenRequested(QWebFullScreenRequest) override;
     void geolocationPermissionRequested(QWebFrameAdapter*) override;
     void geolocationPermissionRequestCancelled(QWebFrameAdapter*) override;
     void notificationsPermissionRequested(QWebFrameAdapter*) override;
@@ -120,6 +122,7 @@ public:
     const char* editorCommandForKeyEvent(QKeyEvent*) override;
 
     void updateNavigationActions() override;
+    void clearCustomActions() override;
 
     QObject* inspectorHandle() override;
     void setInspectorFrontend(QObject*) override;
@@ -141,11 +144,13 @@ public:
     void createAndSetCurrentContextMenu(const QList<MenuItemDescription>&, QBitArray*) override;
     bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) override;
     void recentlyAudibleChanged(bool) override;
+    void focusedElementChanged(const QWebElement&) override;
 
 
     void createMainFrame();
 
     void _q_webActionTriggered(bool checked);
+    void _q_customActionTriggered(bool checked);
     void updateAction(QWebPage::WebAction);
     void updateEditorActions();
 
@@ -199,12 +204,15 @@ public:
     bool useFixedLayout;
 
     QAction *actions[QWebPage::WebActionCount];
+    QHash<int, QAction*> customActions;
 
     QPointer <QWindow> window;
     QWidget* inspectorFrontend;
     QWebInspector* inspector;
     bool inspectorIsInternalOnly; // True if created through the Inspect context menu action
     Qt::DropAction m_lastDropAction;
+
+    QMetaMethod m_fullScreenRequested;
 };
 
 #endif

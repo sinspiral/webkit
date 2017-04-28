@@ -42,9 +42,7 @@
 #endif
 
 #if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QNetworkAccessManager;
-QT_END_NAMESPACE
+#include "QtNetworkAccessManager.h"
 #endif
 
 namespace WebCore {
@@ -61,7 +59,7 @@ class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
 struct NetworkProcessCreationParameters;
 
-class NetworkProcess : public ChildProcess, private DownloadManager::Client {
+class NetworkProcess : public ChildProcess, public DownloadManager::Client {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
     friend class NeverDestroyed<NetworkProcess>;
     friend class NeverDestroyed<DownloadManager>;
@@ -106,13 +104,14 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    QNetworkAccessManager* networkAccessManager() { return m_networkAccessManager; }
+    QNetworkAccessManager& networkAccessManager() { return m_networkAccessManager; }
 #endif
 
     void prefetchDNS(const String&);
 
-private:
     NetworkProcess();
+
+private:
     ~NetworkProcess();
 
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
@@ -164,6 +163,9 @@ private:
     void downloadRequest(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&);
     void resumeDownload(WebCore::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancelDownload(DownloadID);
+#if PLATFORM(QT)
+    void startTransfer(DownloadID, const String& destination);
+#endif
 #if USE(NETWORK_SESSION)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
     void continueWillSendRequest(DownloadID, const WebCore::ResourceRequest&);
@@ -209,7 +211,7 @@ private:
 #endif
 
 #if PLATFORM(QT)
-    QNetworkAccessManager* m_networkAccessManager { nullptr };
+    QtNetworkAccessManager m_networkAccessManager;
 #endif
 };
 

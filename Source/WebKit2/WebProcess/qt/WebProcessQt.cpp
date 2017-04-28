@@ -28,16 +28,11 @@
 
 #include "InjectedBundle.h"
 #include "QtBuiltinBundle.h"
-#include "QtNetworkAccessManager.h"
 #include "SeccompFiltersWebProcessQt.h"
 #include "WKBundleAPICast.h"
 #include "WebProcessCreationParameters.h"
 
 #include <QCoreApplication>
-#include <QNetworkAccessManager>
-#include <QNetworkCookieJar>
-#include <QNetworkDiskCache>
-#include <WebCore/CookieJarQt.h>
 #include <WebCore/FileSystem.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/PageCache.h>

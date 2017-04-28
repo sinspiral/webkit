@@ -1,3 +1,115 @@
+2017-03-09  Brady Eidson  <beidson@apple.com>
+
+        Add WKURLSchemeHandler API for handling custom protocols.
+        https://bugs.webkit.org/show_bug.cgi?id=169422
+
+        Reviewed by Tim Horton.
+
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::maybeCanonicalizeScheme):
+        (WebCore::URLParser::isSpecialScheme):
+        * platform/URLParser.h:
+
+2017-03-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [TexMap] Add missing class member initializations
+        https://bugs.webkit.org/show_bug.cgi?id=169665
+
+        Reviewed by Michael Catanzaro.
+
+        Zero-initialize the members in various TextureMapper classes
+        that are missing the proper initialization, as reported by
+        the Coverity tool.
+
+        * platform/graphics/texmap/BitmapTexturePool.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        (WebCore::CoordinatedGraphicsLayerState::CoordinatedGraphicsLayerState):
+        * platform/graphics/texmap/coordinated/SurfaceUpdateInfo.h:
+
+2016-09-15  Keith Miller  <keith_miller@apple.com>
+
+        Pragma out undefined-var-template warnings in JSC for JSObjects that are templatized
+        https://bugs.webkit.org/show_bug.cgi?id=161985
+
+        Reviewed by Alex Christensen.
+
+        Delete unneeded using, which broke the build on newer versions of clang.
+
+        * bridge/objc/WebScriptObject.mm:
+
+2016-09-16  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        ASSERTION FAILED: The string being removed is atomic in the string table of an other thread! iterator != atomicStringTable.end() at Source/WTF/wtf/text/AtomicStringImpl.cpp(453)
+        https://bugs.webkit.org/show_bug.cgi?id=161800
+
+        Reviewed by Žan Doberšek.
+
+        Speculative fix. These strings are created as static objects on a secondary thread, but all
+        static objects are destroyed in exit handlers on the main thread, and AtomicStrings must
+        always be destroyed on the same thread they are created.
+
+        * platform/graphics/texmap/TextureMapperShaderProgram.h:
+
+2017-01-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] WebKitWebProcess at 100% CPU loading hyphenation dictionaries
+        https://bugs.webkit.org/show_bug.cgi?id=165601
+
+        Reviewed by Carlos Garcia Campos.
+
+        In HyphenationLibHyphen, retrieve the canonicalized absolute pathname of the dictionary file
+        in order to avoid storing symbolic links as the target files for specific locales. libhyphen
+        distributes its dictionary files by linking a set of similar locales files to a single file.
+        Not resolving those symbolic links means we'll be opening a single file via multiple
+        HyphenationDictionary objects, which is far from optimal.
+
+        To add insult to injury, these HyphenationDictionary objects were stored in a TinyLRUCache
+        with a slim capacity of 4. This meant that while already loading one single file through
+        multiple symlinks, because of continuous eviciton from this LRU cache the same symlinks
+        continued to be processed, in some cases resulting in opening the same dictionary file
+        hundreds or thousands of times. The capacity of this TinyLRUCache is increased to 32
+        to keep the amount of open libhyphen dictionaries capped at some reasonable number.
+
+        * platform/text/hyphen/HyphenationLibHyphen.cpp:
+        (WebCore::scanDirectoryForDicionaries):
+
+2017-01-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Introduce CPU(X86_SSE2) instead of various SSE2 checks
+        https://bugs.webkit.org/show_bug.cgi?id=166808
+
+        Reviewed by Michael Catanzaro.
+
+        Now copyLCharsFromUCharSource can use SSE2 implementation on non-Darwin
+        OSes, and all SSE2 code paths are available for MSVC on x86 if /arch:SSE2
+        or higher is enabled, and for MSVC on x86_64.
+
+        No new tests needed.
+
+        * platform/audio/SincResampler.cpp:
+        (WebCore::SincResampler::process):
+        * platform/audio/VectorMath.cpp:
+        (WebCore::VectorMath::vsma):
+        (WebCore::VectorMath::vsmul):
+        (WebCore::VectorMath::vadd):
+        (WebCore::VectorMath::vmul):
+        (WebCore::VectorMath::zvmul):
+        (WebCore::VectorMath::vsvesq):
+        (WebCore::VectorMath::vmaxmgv):
+
+2016-09-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win][Debug] Compile fix.
+        https://bugs.webkit.org/show_bug.cgi?id=162550
+
+        Reviewed by Alex Christensen.
+
+        Windows headers need the FragmentForwardIterator '==' operator in debug mode.
+
+        * rendering/SimpleLineLayout.cpp:
+        (WebCore::SimpleLineLayout::FragmentForwardIterator::operator==):
+
 2016-04-06  Per Arne Vollan  <peavo@outlook.com>
 
         [WinCairo][MediaFoundation] Videos are always autoplaying.

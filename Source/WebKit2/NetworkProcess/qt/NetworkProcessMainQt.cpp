@@ -37,10 +37,6 @@ using namespace WebCore;
 
 namespace WebKit {
 
-// QTFIXME: Copied from WebProcessMainQt.cpp
-
-namespace {
-
 class EnvHttpProxyFactory : public QNetworkProxyFactory {
 public:
     EnvHttpProxyFactory() { }
@@ -110,12 +106,10 @@ static void initializeProxy()
     QNetworkProxyFactory::setUseSystemConfiguration(true);
 }
 
-}
-
 class NetworkProcessMain final: public ChildProcessMainBase {
 public:
 
-    bool platformInitialize() override
+    bool platformInitialize() final
     {
         initializeProxy();
         return true;

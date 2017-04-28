@@ -1,9 +1,6 @@
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/TestWebKitAPI")
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WTF")
 
-# FIXME: It should be in WebKitFS actually
-set(FORWARDING_HEADERS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders")
-
 if (ENABLE_WEBKIT2)
     add_definitions(-DHAVE_WEBKIT2=1)
 
@@ -16,8 +13,8 @@ endif ()
 
 
 include_directories(
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders
-    ${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore
+    ${FORWARDING_HEADERS_DIR}
+    ${FORWARDING_HEADERS_DIR}/JavaScriptCore
     ${TESTWEBKITAPI_DIR}
 
     # The WebKit2 Qt APIs depend on qwebkitglobal.h, which lives in WebKit

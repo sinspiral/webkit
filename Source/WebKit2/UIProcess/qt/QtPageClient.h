@@ -22,6 +22,7 @@
 #define QtPageClient_h
 
 #include "PageClient.h"
+#include "WebFullScreenManagerProxy.h"
 
 class QQuickWebView;
 
@@ -33,7 +34,11 @@ class QtWebPageEventHandler;
 class DefaultUndoController;
 class ShareableBitmap;
 
-class QtPageClient final : public PageClient {
+class QtPageClient final : public PageClient
+#if ENABLE(FULLSCREEN_API)
+    , public WebFullScreenManagerProxyClient
+#endif
+{
 public:
     QtPageClient();
     ~QtPageClient();
@@ -93,11 +98,23 @@ public:
     void didFindZoomableArea(const WebCore::IntPoint&, const WebCore::IntRect&) override;
     void updateTextInputState() override;
     void handleWillSetInputMethodState() override;
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     void doneWithGestureEvent(const WebGestureEvent&, bool wasEventHandled) override;
 #endif
 #if ENABLE(TOUCH_EVENTS)
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+    WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
+
+    // WebFullScreenManagerProxyClient
+    void closeFullScreenManager() final;
+    bool isFullScreen() final;
+    void enterFullScreen() final;
+    void exitFullScreen() final;
+    void beganEnterFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) final;
+    void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) final;
 #endif
 
 private:
@@ -124,7 +141,9 @@ public:
     void didChangeBackgroundColor() override;
     void refView() override;
     void derefView() override;
+#if ENABLE(VIDEO) && USE(GSTREAMER)
     bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
+#endif
     void didRestoreScrollPosition() override;
 };
 

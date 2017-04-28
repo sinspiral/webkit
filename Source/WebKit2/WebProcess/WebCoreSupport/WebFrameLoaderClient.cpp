@@ -1332,7 +1332,11 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     m_frameHasCustomContentProvider = isMainFrame && webPage->shouldUseCustomContentProviderForResponse(response);
     m_frameCameFromPageCache = false;
 
+#if PLATFORM(QT)
+    ScrollbarMode defaultScrollbarMode = ScrollbarAuto;
+#else
     ScrollbarMode defaultScrollbarMode = shouldHideScrollbars ? ScrollbarAlwaysOff : ScrollbarAuto;
+#endif
 
     m_frame->coreFrame()->createView(webPage->size(), backgroundColor, isTransparent,
         webPage->fixedLayoutSize(), fixedVisibleContentRect, shouldUseFixedLayout,

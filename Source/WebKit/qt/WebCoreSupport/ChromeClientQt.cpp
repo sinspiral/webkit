@@ -64,6 +64,7 @@
 #endif
 #include "ViewportArguments.h"
 #include "WindowFeatures.h"
+#include "qwebfullscreenrequest.h"
 #include "qwebkitplatformplugin.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
@@ -208,16 +209,24 @@ void ChromeClientQt::takeFocus(FocusDirection)
 }
 
 
-void ChromeClientQt::focusedElementChanged(Element*)
+void ChromeClientQt::focusedElementChanged(Element* element)
 {
+    emit m_webPage->focusedElementChanged(QWebElement(element));
 }
 
 void ChromeClientQt::focusedFrameChanged(Frame*)
 {
 }
 
-Page* ChromeClientQt::createWindow(Frame*, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction&)
+Page* ChromeClientQt::createWindow(Frame* frame, const FrameLoadRequest&, const WindowFeatures& features, const NavigationAction&)
 {
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#else
+    UNUSED_PARAM(frame);
+#endif
+
     QWebPageAdapter* newPage = m_webPage->createWindow(features.dialog);
     if (!newPage)
         return 0;
@@ -407,7 +416,7 @@ void ChromeClientQt::invalidateRootView(const IntRect& windowRect)
 {
 #if USE(TILED_BACKING_STORE)
     if (platformPageClient()) {
-        WebCore::TiledBackingStore* backingStore = m_webPage->mainFrameAdapter()->frame->tiledBackingStore();
+        WebCore::TiledBackingStore* backingStore = m_webPage->mainFrameAdapter().frame->tiledBackingStore();
         if (!backingStore)
             return;
         backingStore->invalidate(windowRect);
@@ -448,7 +457,7 @@ void ChromeClientQt::scroll(const IntSize& delta, const IntRect& scrollViewRect,
 void ChromeClientQt::delegatedScrollRequested(const IntPoint& point)
 {
 
-    const QPoint ofs = m_webPage->mainFrameAdapter()->scrollPosition();
+    const QPoint ofs = m_webPage->mainFrameAdapter().scrollPosition();
     IntSize currentPosition(ofs.x(), ofs.y());
     int x = point.x() - currentPosition.width();
     int y = point.y() - currentPosition.height();
@@ -611,7 +620,7 @@ void ChromeClientQt::scheduleAnimation()
 
 void ChromeClientQt::serviceScriptedAnimations()
 {
-    m_webPage->mainFrameAdapter()->frame->view()->serviceScriptedAnimations(currentTime());
+    m_webPage->mainFrameAdapter().frame->view()->serviceScriptedAnimations(currentTime());
 }
 #endif
 
@@ -651,9 +660,9 @@ IntRect ChromeClientQt::visibleRectForTiledBackingStore() const
         return IntRect();
 
     if (!platformPageClient()->viewResizesToContentsEnabled()) {
-        const QPoint ofs = m_webPage->mainFrameAdapter()->scrollPosition();
+        const QPoint ofs = m_webPage->mainFrameAdapter().scrollPosition();
         IntSize offset(ofs.x(), ofs.y());
-        return QRect(QPoint(offset.width(), offset.height()), m_webPage->mainFrameAdapter()->frameRect().size());
+        return QRect(QPoint(offset.width(), offset.height()), m_webPage->mainFrameAdapter().frameRect().size());
     }
 
     return enclosingIntRect(FloatRect(platformPageClient()->graphicsItemVisibleRect()));
@@ -700,6 +709,23 @@ void ChromeClientQt::enterVideoFullscreenForVideoElement(HTMLVideoElement& video
 void ChromeClientQt::exitVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
     fullScreenVideo()->exitVideoFullscreen(&videoElement);
+}
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+bool ChromeClientQt::supportsFullScreenForElement(const Element*, bool withKeyboard)
+{
+    return !withKeyboard;
+}
+
+void ChromeClientQt::enterFullScreenForElement(Element* element)
+{
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createEnterRequest(m_webPage, QWebElement(element)));
+}
+
+void ChromeClientQt::exitFullScreenForElement(Element* element)
+{
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createExitRequest(m_webPage, QWebElement(element)));
 }
 #endif
 

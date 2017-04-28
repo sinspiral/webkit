@@ -22,6 +22,7 @@
 #define QWEBPAGE_H
 
 #include <QtWebKit/qwebkitglobal.h>
+#include <QtWebKit/qwebfullscreenrequest.h>
 #include <QtWebKit/qwebsettings.h>
 
 #include <QtCore/qobject.h>
@@ -44,6 +45,7 @@ class QWebNetworkRequest;
 class QWebHistory;
 
 class QWebFrameData;
+class QWebFullScreenRequest;
 class QWebHistoryItem;
 class QWebHitTestResult;
 class QWebNetworkInterface;
@@ -326,6 +328,7 @@ public:
 
 #ifndef QT_NO_ACTION
     QAction *action(WebAction action) const;
+    QAction *customAction(int action) const;
 #endif
     virtual void triggerAction(WebAction action, bool checked = false);
 
@@ -438,6 +441,7 @@ Q_SIGNALS:
     void unsupportedContent(QNetworkReply *reply);
     void downloadRequested(const QNetworkRequest &request);
 
+    void focusedElementChanged(const QWebElement &element);
     void microFocusChanged();
     void contentsChanged();
     void databaseQuotaExceeded(QWebFrame* frame, QString databaseName);
@@ -450,6 +454,7 @@ Q_SIGNALS:
 
     void featurePermissionRequested(QWebFrame* frame, QWebPage::Feature feature);
     void featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
+    void fullScreenRequested(QWebFullScreenRequest fullScreenRequest);
 
     void consoleMessageReceived(MessageSource source, MessageLevel level, const QString& message, int lineNumber, const QString& sourceID);
 
@@ -472,6 +477,7 @@ private:
     Q_PRIVATE_SLOT(d, void _q_onLoadProgressChanged(int))
 #ifndef QT_NO_ACTION
     Q_PRIVATE_SLOT(d, void _q_webActionTriggered(bool checked))
+    Q_PRIVATE_SLOT(d, void _q_customActionTriggered(bool checked))
 #endif
     Q_PRIVATE_SLOT(d, void _q_cleanupLeakMessages())
     Q_PRIVATE_SLOT(d, void _q_updateScreen(QScreen*))
@@ -479,6 +485,7 @@ private:
     QWebPagePrivate *d;
 
     friend class QWebFrame;
+    friend class QWebFullScreenRequest;
     friend class QWebPagePrivate;
     friend class QWebView;
     friend class QWebViewPrivate;

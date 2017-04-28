@@ -381,6 +381,8 @@ void WebProcess::ensureNetworkProcessConnection()
     IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
 #elif OS(DARWIN)
     IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+#elif OS(WINDOWS)
+    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.handle());
 #else
     ASSERT_NOT_REACHED();
 #endif
@@ -1052,6 +1054,8 @@ void WebProcess::ensureWebToDatabaseProcessConnection()
     IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
 #elif OS(DARWIN)
     IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+#elif OS(WINDOWS)
+    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.handle());
 #else
     ASSERT_NOT_REACHED();
 #endif
@@ -1061,13 +1065,6 @@ void WebProcess::ensureWebToDatabaseProcessConnection()
 }
 
 #endif // ENABLED(DATABASE_PROCESS)
-
-#if PLATFORM(QT)
-void WebProcess::startTransfer(uint64_t downloadID, const String& destination)
-{
-//    downloadManager().startTransfer(downloadID, destination);
-}
-#endif
 
 void WebProcess::setEnhancedAccessibility(bool flag)
 {

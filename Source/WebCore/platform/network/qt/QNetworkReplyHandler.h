@@ -148,6 +148,7 @@ private Q_SLOTS:
 private:
     void start();
     String httpMethod() const;
+    void continueAfterWillSendRequest(const ResourceRequest&);
     void redirect(ResourceResponse&, const QUrl&);
     bool wasAborted() const { return !m_resourceHandle; }
     QNetworkReply* sendNetworkRequest(QNetworkAccessManager*, const ResourceRequest&);
